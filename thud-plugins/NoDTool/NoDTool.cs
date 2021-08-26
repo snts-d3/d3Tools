@@ -13,8 +13,54 @@ namespace Turbo.Plugins.Default
     using SharpDX.Text;
     using System.Windows.Forms;
 
+    public class KadalaTab
+    {
+        public float screenX { get; }
+        public float screenY { get; }
+
+        public KadalaTab(float screenX, float screenY) 
+        {
+            this.screenX = screenX;
+            this.screenY = screenY;
+        }
+    }
+
+    public class KadalaItem
+    {
+        public float screenX { get; }
+        public float screenY { get; }
+        public int bloodShardCost { get; }
+        public int itemSize { get; }
+        public KadalaTab kadalaTab { get; }
+
+        public KadalaItem(float screenX, float screenY, int bloodShardCost, int itemSize, KadalaTab kadalaTab)
+        {
+            this.screenX = screenX;
+            this.screenY = screenY;
+            this.bloodShardCost = bloodShardCost;
+            this.itemSize = itemSize;
+            this.kadalaTab = kadalaTab;
+        }
+    }
+
     public class NoDTool : BasePlugin, IInGameTopPainter, IBeforeRenderHandler
     {
+
+        private static float VENDOR_ITEMS_LEFT_X = 0.05f;
+        private static float VENDOR_ITEMS_RIGHT_X = 0.18f;
+        private static float VENDOR_ITEMS_0_Y = 0.2f;
+        private static float VENDOR_ITEMS_1_Y = 0.3f;
+        private static float VENDOR_ITEMS_2_Y = 0.4f;
+        private static float VENDOR_ITEMS_3_Y = 0.5f;
+        private static float VENDOR_ITEMS_4_Y = 0.6f;
+        private static float VENDOR_ITEMS_6_Y = 0.7f;
+
+        private static KadalaTab KADALA_TAB_WEAPONS = new KadalaTab(0.27f, 0.17f);
+        private static KadalaTab KADALA_TAB_ARMORY = new KadalaTab(0.27f, 0.32f);
+
+        private static KadalaItem KADALA_ITEM_QUIVER = new KadalaItem(VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_1_Y, 25, 2, KADALA_TAB_WEAPONS);
+        private static KadalaItem KADALA_ITEM_TWO_HANDED_WEAPON = new KadalaItem(VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_0_Y, 75, 2, KADALA_TAB_WEAPONS);
+        private static KadalaItem KADALA_ITEM_HANDS = new KadalaItem(VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_0_Y, 25, 2, KADALA_TAB_ARMORY);
 
         private IUiElement salvageButton;
         private IUiElement salvageNormalButton;
@@ -25,10 +71,11 @@ namespace Turbo.Plugins.Default
         private IUiElement vendorTab4;
         private HashSet<string> itemCache;
 
-
         private IFont watermark;
 
         private bool isSalvageAncientAndPrimal = true;
+
+        private KadalaItem itemToGambleOn = KADALA_ITEM_HANDS;
 
         public NoDTool()
         {
@@ -79,28 +126,20 @@ namespace Turbo.Plugins.Default
         }
 
         private void AutoGamble() {
-            // quiver
-            int bloodShardCost = 25;
-            int itemSize = 2;
-            float KADALA_TAB_WEAPONS_X = 0.27f;
-            float KADALA_TAB_WEAPONS_Y = 0.17f;
-            float KADALA_WEAPONS_QUIVER_X = 0.05f;
-            float KADALA_WEAPONS_QUIVER_Y = 0.3f;
-
             int numGambles = Math.Min(
                 // max gambles to clear blood shards
-                ((int) Hud.Game.Me.Materials.BloodShard) / bloodShardCost,
+                ((int) Hud.Game.Me.Materials.BloodShard) / itemToGambleOn.bloodShardCost,
                 // num items fitting into inventory
-                (Hud.Game.Me.InventorySpaceTotal - Hud.Game.InventorySpaceUsed) / itemSize
+                (Hud.Game.Me.InventorySpaceTotal - Hud.Game.InventorySpaceUsed) / itemToGambleOn.itemSize
             );
             if (numGambles < 1) {
                 return;
             }
 
-            Hud.Interaction.MouseMove(KADALA_TAB_WEAPONS_X * Hud.Window.Size.Width,  KADALA_TAB_WEAPONS_Y * Hud.Window.Size.Height, 1, 1);
+            Hud.Interaction.MouseMove(itemToGambleOn.kadalaTab.screenX * Hud.Window.Size.Width,  itemToGambleOn.kadalaTab.screenY * Hud.Window.Size.Height, 1, 1);
             LeftClick();
             for (int i = 0; i < numGambles; i++) {
-                Hud.Interaction.MouseMove(KADALA_WEAPONS_QUIVER_X * Hud.Window.Size.Width, KADALA_WEAPONS_QUIVER_Y * Hud.Window.Size.Height, 1, 1);
+                Hud.Interaction.MouseMove(itemToGambleOn.screenX * Hud.Window.Size.Width, itemToGambleOn.screenY * Hud.Window.Size.Height, 1, 1);
                 RightClick();
             }
         }
