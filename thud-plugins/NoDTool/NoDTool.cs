@@ -27,14 +27,16 @@ namespace Turbo.Plugins.Default
 
     public class KadalaItem
     {
+        public String identifier { get; }
         public float screenX { get; }
         public float screenY { get; }
         public int bloodShardCost { get; }
         public int itemSize { get; }
         public KadalaTab kadalaTab { get; }
 
-        public KadalaItem(float screenX, float screenY, int bloodShardCost, int itemSize, KadalaTab kadalaTab)
+        public KadalaItem(String identifier, float screenX, float screenY, int bloodShardCost, int itemSize, KadalaTab kadalaTab)
         {
+            this.identifier = identifier;
             this.screenX = screenX;
             this.screenY = screenY;
             this.bloodShardCost = bloodShardCost;
@@ -53,14 +55,39 @@ namespace Turbo.Plugins.Default
         private static float VENDOR_ITEMS_2_Y = 0.4f;
         private static float VENDOR_ITEMS_3_Y = 0.5f;
         private static float VENDOR_ITEMS_4_Y = 0.6f;
-        private static float VENDOR_ITEMS_6_Y = 0.7f;
 
         private static KadalaTab KADALA_TAB_WEAPONS = new KadalaTab(0.27f, 0.17f);
         private static KadalaTab KADALA_TAB_ARMORY = new KadalaTab(0.27f, 0.32f);
+        private static KadalaTab KADALA_TAB_TRINKETS = new KadalaTab(0.27f, 0.47f);
 
-        private static KadalaItem KADALA_ITEM_QUIVER = new KadalaItem(VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_1_Y, 25, 2, KADALA_TAB_WEAPONS);
-        private static KadalaItem KADALA_ITEM_TWO_HANDED_WEAPON = new KadalaItem(VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_0_Y, 75, 2, KADALA_TAB_WEAPONS);
-        private static KadalaItem KADALA_ITEM_HANDS = new KadalaItem(VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_0_Y, 25, 2, KADALA_TAB_ARMORY);
+        private static KadalaItem[] KADALA_ITEMS = 
+        {
+            // WEAPONS
+            new KadalaItem("KADALA_ITEM_ONE_HANDED_WEAPON", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_0_Y, 75, 2, KADALA_TAB_WEAPONS),
+            new KadalaItem("KADALA_ITEM_TWO_HANDED_WEAPON", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_0_Y, 75, 2, KADALA_TAB_WEAPONS),
+            new KadalaItem("KADALA_ITEM_QUIVER", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_1_Y, 25, 2, KADALA_TAB_WEAPONS),
+            new KadalaItem("KADALA_ITEM_ORB", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_1_Y, 25, 2, KADALA_TAB_WEAPONS),
+            new KadalaItem("KADALA_ITEM_MOJO", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_2_Y, 25, 2, KADALA_TAB_WEAPONS),
+            new KadalaItem("KADALA_ITEM_PHYLACTERY", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_2_Y, 25, 2, KADALA_TAB_WEAPONS),
+            // ARMORY
+            new KadalaItem("KADALA_ITEM_HELM", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_0_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_HANDS", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_0_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_BOOTS", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_1_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_CHEST", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_1_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_BELT", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_2_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_SHOULDERS", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_2_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_PANTS", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_3_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_BRACERS", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_3_Y, 25, 2, KADALA_TAB_ARMORY),
+            new KadalaItem("KADALA_ITEM_SHIELD", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_4_Y, 25, 2, KADALA_TAB_ARMORY),
+            // TRINKETS
+            new KadalaItem("KADALA_ITEM_RING", VENDOR_ITEMS_LEFT_X, VENDOR_ITEMS_0_Y, 50, 2, KADALA_TAB_TRINKETS),
+            new KadalaItem("KADALA_ITEM_AMULET", VENDOR_ITEMS_RIGHT_X, VENDOR_ITEMS_0_Y, 100, 2, KADALA_TAB_TRINKETS)
+        };
+
+        private static string PATH_TO_PLUGIN_CONFIG = "./TurboHUD/plugins/NoDTool/config";
+        private static string CONFIG_FILE = "config.txt";
+
+        private static string CONFIG_KEY_KADALA_GAMBLE_ON_ITEM = "KADALA_GAMBLE_ON_ITEM";
 
         private IUiElement salvageButton;
         private IUiElement salvageNormalButton;
@@ -69,18 +96,18 @@ namespace Turbo.Plugins.Default
         private IUiElement salvageDialog;
         private IUiElement salvageTab;
         private IUiElement vendorTab4;
-        private HashSet<string> itemCache;
 
         private IFont watermark;
 
         private bool isSalvageAncientAndPrimal = true;
 
-        private KadalaItem itemToGambleOn = KADALA_ITEM_HANDS;
+        private KadalaItem itemToGambleOn = null;
 
         public NoDTool()
         {
             Enabled = true;
-            itemCache = new HashSet<string>();
+            InitConfigWatcher();
+            ReadConfig();
         }
 
         public override void Load(IController hud)
@@ -119,10 +146,47 @@ namespace Turbo.Plugins.Default
                 CloseChatIfOpen();
             }
 
-            if (isKadalaVisible) 
+            if (isKadalaVisible && itemToGambleOn != null) 
             {
                 AutoGamble();
             }
+        }
+
+        private void InitConfigWatcher() {
+            FileSystemWatcher watcher = new FileSystemWatcher(PATH_TO_PLUGIN_CONFIG)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size
+                };
+            watcher.Changed += (sender, e) => 
+            {
+                if (e.Name == CONFIG_FILE) 
+                {
+                    ReadConfig();
+                }
+            };
+            watcher.EnableRaisingEvents = true;
+        }
+
+        private void ReadConfig()
+        {
+                using (StreamReader reader = new StreamReader(new FileStream(PATH_TO_PLUGIN_CONFIG + "/" + CONFIG_FILE, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                {
+                    String[] contents = reader.ReadToEnd().Split('\n');
+                    String kadalaItemId = ReadConfigEntry(contents, CONFIG_KEY_KADALA_GAMBLE_ON_ITEM);
+                    itemToGambleOn = KADALA_ITEMS.Where(item => item.identifier == kadalaItemId).FirstOrDefault();
+                }
+        }
+
+        private string ReadConfigEntry(String[] contents, String key) {
+            String entry = contents.Where(line => line.StartsWith(key)).FirstOrDefault();
+            if (entry == null) {
+                return null;
+            }
+            String[] keyPair = entry.Split('=');
+            if (keyPair.Length < 2) {
+                return null;
+            }
+            return keyPair[1];
         }
 
         private void AutoGamble() {
