@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿using System;
 using SharpDX;
 using System.IO;
 
@@ -88,6 +88,8 @@ namespace Turbo.Plugins.Default
         private static string CONFIG_FILE = "config.txt";
 
         private static string CONFIG_KEY_KADALA_GAMBLE_ON_ITEM = "KADALA_GAMBLE_ON_ITEM";
+        private static string CONFIG_KEY_AUTO_SALVAGE_ENABLED = "AUTO_SALVAGE_ENABLED";
+        
 
         private IUiElement salvageButton;
         private IUiElement salvageNormalButton;
@@ -102,6 +104,7 @@ namespace Turbo.Plugins.Default
         private bool isSalvageAncientAndPrimal = true;
 
         private KadalaItem itemToGambleOn = null;
+        private bool isAutoSalvageEnabled = false;
 
         public NoDTool()
         {
@@ -140,7 +143,7 @@ namespace Turbo.Plugins.Default
 
             isKadalaVisible = (KadalaWindow == null) ? false : KadalaWindow.Visible;
 
-            if (isBlackSmithVisible) 
+            if (isBlackSmithVisible && isAutoSalvageEnabled) 
             {
                 AutoSalvage();
                 CloseChatIfOpen();
@@ -171,9 +174,10 @@ namespace Turbo.Plugins.Default
         {
                 using (StreamReader reader = new StreamReader(new FileStream(PATH_TO_PLUGIN_CONFIG + "/" + CONFIG_FILE, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                 {
-                    String[] contents = reader.ReadToEnd().Split('\n');
+                    String[] contents = reader.ReadToEnd().Replace("\r", "").Split('\n');
                     String kadalaItemId = ReadConfigEntry(contents, CONFIG_KEY_KADALA_GAMBLE_ON_ITEM);
                     itemToGambleOn = KADALA_ITEMS.Where(item => item.identifier == kadalaItemId).FirstOrDefault();
+                    isAutoSalvageEnabled = "1".Equals(ReadConfigEntry(contents, CONFIG_KEY_AUTO_SALVAGE_ENABLED));
                 }
         }
 
